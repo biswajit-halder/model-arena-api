@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Model Arena API — demo</title>
+  <style>
+    :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, sans-serif; }
+    body { max-width: 960px; margin: 2rem auto; padding: 0 1rem; background: #0d1117; color: #e6edf3; }
+    h1 { margin-bottom: .25rem; }
+    p.lead { color: #8b949e; margin-top: 0; }
+    label { display: block; margin: .8rem 0 .3rem; font-weight: 600; }
+    input, textarea { width: 100%; box-sizing: border-box; padding: .6rem; border-radius: 6px; border: 1px solid #30363d; background: #161b22; color: #e6edf3; }
+    textarea { min-height: 72px; }
+    button { margin: .8rem .4rem 0 0; padding: .55rem 1rem; border: 0; border-radius: 6px; background: #238636; color: #fff; cursor: pointer; }
+    button.secondary { background: #30363d; }
+    button.vote { background: #1f6feb; }
+    pre { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 1rem; overflow: auto; white-space: pre-wrap; }
+    .models { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem; }
+    .card h3 { font-size: .85rem; color: #58a6ff; word-break: break-all; margin-top: 0; }
+    .meta { color: #8b949e; font-size: .8rem; }
+    #status { min-height: 1.4rem; color: #f0883e; }
+  </style>
+</head>
+<body>
+  <h1>Model Arena API</h1>
+  <p class="lead">One prompt, several free models, side by side. Seeded battles cost zero model calls.</p>
+
+  <label for="base">API base URL</label>
+  <input id="base" value="https://model-arena-api.bhalder.workers.dev" />
+
+  <label for="key">API key (for live battles and votes)</label>
+  <input id="key" type="password" placeholder="mak_..." />
+
+  <label for="prompt">Prompt</label>
+  <textarea id="prompt">Explain a CDN in two sentences.</textarea>
+
+  <button class="secondary" id="load-examples">Load demo examples</button>
+  <button class="secondary" id="run-demo">Run seeded battle (0 calls)</button>
+  <button id="run-live">Run live battle</button>
+  <div id="status"></div>
+
+  <div class="models" id="cards"></div>
+  <h3>Raw response</h3>
+  <pre id="output">{}</pre>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const base = () => $('base').value.replace(/\/$/, '');
+    const headers = () => ({ 'content-type': 'application/json', authorization: `Bearer ${$('key').value}` });
+
+    async function request(path, options = {}) {
+      $('status').textContent = 'Working…';
+      const res = await fetch(base() + path, options);
+      const data = await res.json();
+      $('status').textContent = res.ok ? `OK (${res.status})` : `Error ${res.status}: ${data.error?.message ?? 'failed'}`;
+      $('output').textContent = JSON.stringify(data, null, 2);
+      if (!res.ok) return null;
+      return data;
+    }
+
+    function render(battle) {
+      $('cards').innerHTML = '';
+      for (const result of battle.results ?? []) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `<h3>${result.model}</h3><p>${result.text}</p>
+          <p class="meta">${result.latency_ms} ms · ${result.tokens_in + result.tokens_out} tokens · ${result.chars} chars</p>`;
+        const vote = document.createElement('button');
+        vote.className = 'vote';
+        vote.textContent = 'Vote for this model';
+        vote.onclick = async () => {
+          await request('/v1/votes', {
+            method: 'POST', headers: headers(),
+            body: JSON.stringify({ battle_id: battle.id, winner_model: result.model }),
+          });
+        };
+        card.appendChild(vote);
+        $('cards').appendChild(card);
+      }
+    }
+
+    $('load-examples').onclick = async () => {
+      const data = await request('/v1/demo/examples');
+      if (data) $('prompt').value = data.examples.map((e) => `${e.id}: ${e.prompt}`).join('\n');
+    };
+
+    $('run-demo').onclick = async () => {
+      const id = $('prompt').value.split(':')[0].trim() || 'cdn';
+      const battle = await request('/v1/demo/battles', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ example_id: id }),
+      });
+      if (battle) render(battle);
+    };
+
+    $('run-live').onclick = async () => {
+      const battle = await request('/v1/battles', {
+        method: 'POST', headers: headers(),
+        body: JSON.stringify({ prompt: $('prompt').value }),
+      });
+      if (battle) render(battle);
+    };
+  </script>
+</body>
+</html>

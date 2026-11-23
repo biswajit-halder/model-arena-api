@@ -1,0 +1,36 @@
+name = "model-arena-api"
+main = "src/index.ts"
+compatibility_date = "2026-11-22"
+compatibility_flags = ["nodejs_compat"]
+
+# ── Create these resources once, then paste the IDs below ────────────────────
+#   npx wrangler d1 create model-arena-db
+#   npx wrangler kv namespace create CACHE
+#   npx wrangler d1 migrations apply model-arena-db --local
+#   npx wrangler d1 migrations apply model-arena-db --remote
+# ─────────────────────────────────────────────────────────────────────────────
+
+[vars]
+DEFAULT_MODELS = "nvidia/nemotron-3.5-lightning:free,inclusionai/ling-3.2-flash:free,liquid/lfm-3-1.7b:free"
+REQUEST_TIMEOUT_MS = "20000"
+CACHE_TTL_SECONDS = "86400"
+MODELS_CACHE_TTL_SECONDS = "3600"
+PER_MINUTE_LIMIT = "20"
+DAILY_REQUEST_LIMIT = "50"
+KEY_DAILY_LIMIT = "500"
+TEMPLATE_VERSION = "concise-v1"
+MIN_VOTES_FOR_LEADERBOARD = "3"
+ALLOWED_ORIGIN = "https://biswajit-halder.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "model-arena-db"
+database_id = "0cc6d8df-2713-456f-a996-036aeaa2fc43"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "b342cbcc1e544de197f2ca74f9e04d93"
+
+# Secrets (set with `wrangler secret put`):
+#   OPENROUTER_API_KEY
+#   ADMIN_TOKEN

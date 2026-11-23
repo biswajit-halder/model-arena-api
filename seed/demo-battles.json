@@ -1,0 +1,122 @@
+{
+  "examples": [
+    { "id": "cdn", "prompt": "Explain a CDN in two sentences." },
+    { "id": "queue", "prompt": "Why would I use a message queue in a backend API?" },
+    { "id": "rag", "prompt": "When is RAG better than fine-tuning?" },
+    { "id": "cache", "prompt": "What is the difference between exact and semantic caching?" }
+  ],
+  "battles": [
+    {
+      "id": "demo_cdn",
+      "example_id": "cdn",
+      "prompt": "Explain a CDN in two sentences.",
+      "template": "concise-v1",
+      "model_set": ["nvidia/nemotron-3.5-lightning:free", "inclusionai/ling-3.2-flash:free"],
+      "results": [
+        {
+          "model": "nvidia/nemotron-3.5-lightning:free",
+          "status": "ok",
+          "text": "A CDN is a distributed network of proxy servers with cached content located close to users. It reduces latency and origin load by serving static assets from the nearest edge location.",
+          "latency_ms": 812,
+          "tokens_in": 24,
+          "tokens_out": 52,
+          "chars": 204
+        },
+        {
+          "model": "inclusionai/ling-3.2-flash:free",
+          "status": "ok",
+          "text": "A content delivery network stores copies of your content in edge servers around the world. Requests are routed to the closest edge, so users get faster responses and your origin server handles fewer requests.",
+          "latency_ms": 1043,
+          "tokens_in": 24,
+          "tokens_out": 56,
+          "chars": 222
+        }
+      ],
+      "failed": []
+    },
+    {
+      "id": "demo_queue",
+      "example_id": "queue",
+      "prompt": "Why would I use a message queue in a backend API?",
+      "template": "concise-v1",
+      "model_set": ["nvidia/nemotron-3.5-lightning:free", "inclusionai/ling-3.2-flash:free"],
+      "results": [
+        {
+          "model": "nvidia/nemotron-3.5-lightning:free",
+          "status": "ok",
+          "text": "A queue lets the API return immediately while a worker does slow work in the background. It also absorbs traffic spikes and gives you retries, dead-letter handling and a clear state machine for long jobs.",
+          "latency_ms": 735,
+          "tokens_in": 28,
+          "tokens_out": 49,
+          "chars": 211
+        },
+        {
+          "model": "inclusionai/ling-3.2-flash:free",
+          "status": "ok",
+          "text": "Use a message queue to decouple request handling from processing. The producer acknowledges quickly, the consumer processes at its own pace, and failures can be retried without losing the original request.",
+          "latency_ms": 1188,
+          "tokens_in": 28,
+          "tokens_out": 43,
+          "chars": 196
+        }
+      ],
+      "failed": []
+    },
+    {
+      "id": "demo_rag",
+      "example_id": "rag",
+      "prompt": "When is RAG better than fine-tuning?",
+      "template": "concise-v1",
+      "model_set": ["nvidia/nemotron-3.5-lightning:free", "inclusionai/ling-3.2-flash:free"],
+      "results": [
+        {
+          "model": "nvidia/nemotron-3.5-lightning:free",
+          "status": "ok",
+          "text": "RAG is better when facts change often or you need to cite exact sources, because you can update the index without retraining. Fine-tuning is better for changing style, format or behaviour that examples can teach.",
+          "latency_ms": 901,
+          "tokens_in": 22,
+          "tokens_out": 51,
+          "chars": 215
+        },
+        {
+          "model": "inclusionai/ling-3.2-flash:free",
+          "status": "ok",
+          "text": "Choose RAG for fresh, verifiable knowledge with source attribution. Choose fine-tuning when you need the model to consistently follow a specific style or task pattern and the underlying knowledge is stable.",
+          "latency_ms": 1274,
+          "tokens_in": 22,
+          "tokens_out": 42,
+          "chars": 191
+        }
+      ],
+      "failed": []
+    },
+    {
+      "id": "demo_cache",
+      "example_id": "cache",
+      "prompt": "What is the difference between exact and semantic caching?",
+      "template": "concise-v1",
+      "model_set": ["nvidia/nemotron-3.5-lightning:free", "inclusionai/ling-3.2-flash:free"],
+      "results": [
+        {
+          "model": "nvidia/nemotron-3.5-lightning:free",
+          "status": "ok",
+          "text": "Exact caching returns a stored answer only when the request hash matches, so it is fast and predictable. Semantic caching embeds the prompt and reuses an answer for a near-duplicate question, trading a small risk of a wrong hit for higher savings.",
+          "latency_ms": 866,
+          "tokens_in": 26,
+          "tokens_out": 58,
+          "chars": 243
+        },
+        {
+          "model": "inclusionai/ling-3.2-flash:free",
+          "status": "ok",
+          "text": "Exact caches match identical inputs byte for byte. Semantic caches match meaning via vector similarity, which catches reworded prompts but needs a similarity threshold to avoid serving unrelated answers.",
+          "latency_ms": 1102,
+          "tokens_in": 26,
+          "tokens_out": 40,
+          "chars": 181
+        }
+      ],
+      "failed": []
+    }
+  ]
+}

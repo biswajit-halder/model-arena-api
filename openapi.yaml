@@ -1,0 +1,244 @@
+openapi: 3.1.0
+info:
+  title: Model Arena API
+  version: 1.0.0
+  description: Parallel free-model LLM comparison with human votes and a leaderboard. Zero-cost Cloudflare Workers backend.
+servers:
+  - url: https://model-arena-api.bhalder.workers.dev
+    description: Production (after deploy)
+  - url: http://localhost:8787
+    description: Local wrangler dev
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: API key issued by POST /admin/keys
+    adminToken:
+      type: apiKey
+      in: header
+      name: x-admin-token
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            retryable: { type: boolean }
+            details: { type: object }
+    BattleInput:
+      type: object
+      required: [prompt]
+      properties:
+        prompt: { type: string, minLength: 1, maxLength: 4000 }
+        models:
+          type: array
+          minItems: 2
+          maxItems: 3
+          items: { type: string }
+          description: Free model ids; omitted = first two available free models
+        template: { type: string, maxLength: 40 }
+    ModelResult:
+      type: object
+      properties:
+        model: { type: string }
+        status: { const: ok }
+        text: { type: string }
+        latency_ms: { type: integer }
+        tokens_in: { type: integer }
+        tokens_out: { type: integer }
+        chars: { type: integer }
+    FailedResult:
+      type: object
+      properties:
+        model: { type: string }
+        status: { const: error }
+        code: { type: string }
+        retryable: { type: boolean }
+        message: { type: string }
+    Battle:
+      type: object
+      properties:
+        id: { type: string }
+        prompt: { type: string }
+        template: { type: string }
+        model_set: { type: array, items: { type: string } }
+        results: { type: array, items: { $ref: '#/components/schemas/ModelResult' } }
+        failed: { type: array, items: { $ref: '#/components/schemas/FailedResult' } }
+        cache: { type: string, enum: [HIT, MISS] }
+        calls_spent: { type: integer }
+        created_at: { type: string, format: date-time }
+        votes: { type: integer }
+    VoteInput:
+      type: object
+      required: [battle_id, winner_model]
+      properties:
+        battle_id: { type: string }
+        winner_model: { type: string }
+    LeaderboardItem:
+      type: object
+      properties:
+        model: { type: string }
+        wins: { type: integer }
+        losses: { type: integer }
+        win_rate: { type: number, nullable: true }
+        avg_latency_ms: { type: number, nullable: true }
+        avg_tokens: { type: number, nullable: true }
+        samples: { type: integer }
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      responses:
+        '200': { description: OK }
+  /v1/battles:
+    post:
+      summary: Fan one prompt out to 2-3 free models
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BattleInput' }
+      responses:
+        '201':
+          description: Battle created (cache miss)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Battle' }
+        '200':
+          description: Cached battle (zero model calls)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Battle' }
+        '400': { description: Validation error, $ref: '#/components/schemas/Error' }
+        '401': { description: Unauthorized, $ref: '#/components/schemas/Error' }
+        '429': { description: Rate limit or global quota exhausted, $ref: '#/components/schemas/Error' }
+        '502': { description: All models failed, $ref: '#/components/schemas/Error' }
+    get:
+      summary: List recent battles for this key
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20, maximum: 100 }
+      responses:
+        '200': { description: Battle list }
+  /v1/battles/quota:
+    get:
+      summary: Global daily quota status
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: '{ day, used, limit, remaining }' }
+  /v1/battles/{id}:
+    get:
+      summary: Fetch a stored battle with its vote count
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Battle, $ref: '#/components/schemas/Battle' }
+        '404': { description: Not found }
+  /v1/votes:
+    post:
+      summary: Vote for a model in a battle (one per key, changeable)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VoteInput' }
+      responses:
+        '200': { description: '{ battle_id, winner_model, updated }' }
+        '400': { description: Invalid model }
+        '404': { description: Battle not found }
+  /v1/leaderboard:
+    get:
+      summary: Per-model win rates and stats
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: min_votes
+          schema: { type: integer, default: 3 }
+          description: Hide win rates below this sample count
+      responses:
+        '200':
+          description: Leaderboard
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/LeaderboardItem' } }
+                  min_votes: { type: integer }
+  /v1/models:
+    get:
+      summary: Current free models and discovery source
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: '{ models, source }' }
+  /v1/usage:
+    get:
+      summary: Usage aggregates plus global quota
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: hours
+          schema: { type: integer, default: 24 }
+      responses:
+        '200': { description: Usage summary }
+  /v1/usage/events:
+    get:
+      summary: Recent usage events
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20 }
+      responses:
+        '200': { description: Event list }
+  /v1/demo/examples:
+    get:
+      summary: List seeded zero-quota examples
+      responses:
+        '200': { description: '{ examples }' }
+  /v1/demo/battles:
+    post:
+      summary: Serve a seeded battle (zero model calls)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [example_id]
+              properties:
+                example_id: { type: string }
+      responses:
+        '200': { description: Seeded battle, $ref: '#/components/schemas/Battle' }
+        '404': { description: Unknown example; run /admin/seed first }
+  /admin/keys:
+    post:
+      summary: Issue an API key
+      security: [{ adminToken: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label: { type: string }
+      responses:
+        '200': { description: '{ key, prefix, label, note }' }
+  /admin/seed:
+    post:
+      summary: Pre-warm seeded demo battles and model list
+      security: [{ adminToken: [] }]
+      responses:
+        '200': { description: '{ battles_seeded, examples_seeded }' }
