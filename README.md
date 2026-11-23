@@ -6,14 +6,16 @@ Built with **TypeScript + Hono on Cloudflare Workers**, **D1** for keys/battles/
 
 > Narrative: *"I built a cost-aware evaluation platform for LLMs."* This differs from the LLM Gateway (#1): the Gateway chooses one working model with fallback; the Arena runs several and lets humans judge.
 
-**Status:** code complete, 19 tests passing. Deployment pending — fill in the D1/KV IDs in `wrangler.toml` (see Setup).
+**Live API:** `https://model-arena-api.bhalder.workers.dev` · **Demo:** `https://biswajit-halder.github.io/model-arena-api/` · **Repo:** `https://github.com/biswajit-halder/model-arena-api`
+
+**Status:** deployed 2026-11-23. 19 tests passing; CI configured. Seeded demo fixtures are live (`POST /admin/seed` already run).
 
 ---
 
 ## What it does
 
 ```bash
-BASE=https://model-arena-api.bhalder.workers.dev
+BASE=https://model-arena-api.bhalder.workers.dev   # live API
 
 # 1. Zero-quota demo: seed fixtures, then ask a pre-baked battle
 curl -s -X POST "$BASE/admin/seed" -H 'x-admin-token: <ADMIN_TOKEN>'
@@ -175,8 +177,8 @@ npm install
 cp .dev.vars.example .dev.vars      # OPENROUTER_API_KEY + ADMIN_TOKEN
 
 npx wrangler d1 create model-arena-db
-npx wrangler kv namespace create CACHE
-# paste the IDs into wrangler.toml
+npx wrangler kv namespace create model-arena-cache
+# paste the IDs into wrangler.toml (already filled for the live deployment)
 
 npx wrangler d1 migrations apply model-arena-db --local
 npx wrangler secret put OPENROUTER_API_KEY
